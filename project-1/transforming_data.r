@@ -4,18 +4,18 @@ library(forecast)
 cv19 = read.csv2("covid19.csv", header=TRUE, sep=";")
 colnames(cv19) <- c("Dato", "Kum.Ant", "Nye.Tilf")
 cv19$Dato = as.Date(cv19$Dato, "%d.%m.%y")
-
+View(cv19)
 # BoxCox-transform first:
 best.lambda = BoxCox.lambda(cv19$Nye.Tilf)
 Nye.Tilf.BXCX = BoxCox(cv19$Nye.Tilf, best.lambda)
 
-# Perform 7-lag then 1-lag differencing:
+# Perform 7-lag then 1-lag differencing: Y = (1-B)(1-B^7)X
 Nye.Tilf.BXCXdiff71 = diff(diff(Nye.Tilf.BXCX, lag=7), lag=1)
 Nye.Tilf.BXCXdiff71_MZ = Nye.Tilf.BXCXdiff71 - mean(Nye.Tilf.BXCXdiff71)
 
 # Plotting results of data transformation:
 # plot(Nye.Tilf.BXCXdiff71_MZ)
-# ggtsdisplay(Nye.Tilf.BXCXdiff71_MZ)
+ggtsdisplay(Nye.Tilf.BXCXdiff71_MZ)
 
 
 "----------- ARMA Model Estimation --------------"
@@ -24,43 +24,80 @@ Nye.Tilf.BXCXdiff71_MZ = Nye.Tilf.BXCXdiff71 - mean(Nye.Tilf.BXCXdiff71)
 # Is this ok? Should we limit ourselves to models with coefficients
 # with absolute value less than 1?
 
-arma_Nye.Tilf = auto.arima(Nye.Tilf.BXCXdiff71_MZ, d=0, ic="aicc", max.order=5, 
+arma_Nye.Tilf = auto.arima(Nye.Tilf.BXCXdiff71_MZ, d=0, ic="aicc", max.order=10, 
                            stepwise=FALSE, approximation=FALSE, 
-                           stationary=TRUE, lambda=NULL)
+                           stationary=TRUE, lambda=NULL, parallel=TRUE)
 arma_Nye.Tilf
-lines(arma_Nye.Tilf$fitted)
+
+# Diagnostic: Check That the "rescaled residuals" from the 
+# ARMA-model have variance 1, and resemble white noise in
+# the ACF-plot:
+sd(arma_Nye.Tilf$residuals)/sqrt(arma_Nye.Tilf$sigma2)
+Acf(arma_Nye.Tilf$residuals)
 
 #------- Estimate of uncertainty in the phi- and theta-parameters found ------
 #--------------------- by the Arima-function: --------------------------------
 
-phi0 = arma_Nye.Tilf$model$phi
-theta0 = arma_Nye.Tilf$model$theta
-sigma2 = arma_Nye.Tilf$sigma2
-
-# Number of simulation trials:
-m = 2000
-# Steps in each trial:
-n_step = 500
-# Order:
-Arima_Ord = c(1, 0, 1)
-phi_vec = c()
-theta_vec = c()
-sigma2_vec = c()
-
-for(i in 1:m){
-  sim_ts = arima.sim(list(order = c(1,0,1), ar=phi0 , ma=theta0), 
-                     sd=sqrt(sigma2), n=n_step)
-  arma_mod = Arima(sim_ts, order=Arima_Ord, include.mean=FALSE, lambda=NULL)
+# Retrieve the estimates from the main ARMA-model:
+Boot.Arma = function(ARMA.Obj, num_trials=1000) {
+  # Function estimating mean- and variance of parameters
+  # in an ARMA(p, q)-model. Assumes zero mean.
   
-  phi_vec = c(phi_vec, arma_mod$model$phi)
-  theta_vec = c(theta_vec, arma_mod$model$theta)
-  sigma2_vec = c(sigma2_vec, arma_mod$sigma2)
+  phis = ARMA.Obj$model$phi
+  thetas = ARMA.Obj$model$theta
+  sigma2 = ARMA.Obj$sigma2
+  
+  p = length(phis)
+  q = length(thetas)
+  Arima_Ord = c(p, 0, q)
+  
+  # Number of simulation trials:
+  m = num_trials
+  # Steps in each trial:
+  n_step = max(500, 2*length(ARMA.Obj$nobs))
+  
+  # Initializing storage for Bootstrap-estimates:
+  # Stored Column-wise for each parameter.
+  phi_estimates = matrix(0.0, nrow=m, ncol=p)
+  theta_estimates = matrix(0.0, nrow=m, ncol=q)
+  sigma2_vec = c()
+  
+  for(i in 1:m){
+    sim_ts = arima.sim(list(order=Arima_Ord, ar=phis , ma=thetas), 
+                       sd=sqrt(sigma2), n=n_step)
+    arma_mod = Arima(sim_ts, order=Arima_Ord, include.mean=T, lambda=NULL)
+    
+    phi_estimates[i,] = arma_mod$model$phi
+    theta_estimates[i,] = arma_mod$model$theta
+    sigma2_vec = c(sigma2_vec, arma_mod$sigma2)
+  }
+  
+  # Store mean and var in columns. One row per parameter:
+  phi_boot = matrix(0.0, nrow=p, ncol=2)
+  colnames(phi_boot) = c("mean", "var")
+  for(i in 1:p){
+    phi_boot[i, 1] = mean(phi_estimates[, i])
+    phi_boot[i, 2] = var(phi_estimates[, i])
+  }
+  
+  theta_boot = matrix(0.0, nrow=q, ncol=2)
+  colnames(theta_boot) = c("mean", "var")
+  for(i in 1:q){
+    theta_boot[i, 1] = mean(theta_estimates[, i])
+    theta_boot[i, 2] = var(theta_estimates[, i])
+  } 
+  
+  sigma2_boot = c(mean(sigma2_vec), var(sigma2_vec))
+  names(sigma2_boot) = c("mean", "var")
+  ret_value = list()
+  ret_value[["phi"]] = phi_boot
+  ret_value[["theta"]] = theta_boot
+  ret_value[["sigma2"]] = sigma2_boot
+  
+  return (ret_value)
 }
-mean(phi_vec)
-sqrt(var(phi_vec))
 
-mean(theta_vec)
-sqrt(var(theta_vec))
+bootStraps = Boot.Arma(arma_Nye.Tilf, num_trials = 50)
+bootStraps$theta
+str(bootStraps)
 
-mean(sigma2_vec)
-sqrt(var(sigma2_vec))
