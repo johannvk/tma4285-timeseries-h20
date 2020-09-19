@@ -26,7 +26,7 @@ df$Nye.tilfeller = ts(df$Nye.tilfeller, frequency = 7, start = (8+4/7))
 #                     , allowdrift = F
 #                     )
 
-SARIMA = Arima(ts, order = c(3,1,2), seasonal = c(0,1,2), lambda = "auto")
+SARIMA = Arima(df$Nye.tilfeller, order = c(3,1,2), seasonal = c(0,1,2), lambda = "auto")
 #Look at model info
 SARIMA
 
@@ -35,5 +35,5 @@ pred = forecast(SARIMA, h = 14) # h = days ahead to predict
 
 autoplot(SARIMA)
 par(mfrow = c(1,1), cex = 1.5)
-plot(pred, include = 50, xlab = "Weeks", ylab = "New cases", )
+plot(pred, xlab = "Weeks", ylab = "New cases", )
 
