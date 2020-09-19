@@ -4,10 +4,19 @@ library(forecast)
 cv19 = read.csv2("covid19.csv", header=TRUE, sep=";")
 colnames(cv19) <- c("Dato", "Kum.Ant", "Nye.Tilf")
 cv19$Dato = as.Date(cv19$Dato, "%d.%m.%y")
-View(cv19)
+# View(cv19)
 # BoxCox-transform first:
 best.lambda = BoxCox.lambda(cv19$Nye.Tilf)
 Nye.Tilf.BXCX = BoxCox(cv19$Nye.Tilf, best.lambda)
+
+simple_mod = auto.arima(cv19$Nye.Tilf, max.order=10,
+                        stepwise=FALSE, approximation=FALSE,
+                        lambda=NULL)
+var(simple_mod$residuals)/simple_mod$sigma2
+par(cex=1.1)
+Acf(simple_mod$residuals, 
+    main="ACF for Naiive ARMA(4, 1, 4) Residuals", xlab="Lag (days)",
+    col.lab=1, type="correlation")
 
 # Perform 7-lag then 1-lag differencing: Y = (1-B)(1-B^7)X
 Nye.Tilf.BXCXdiff71 = diff(diff(Nye.Tilf.BXCX, lag=7), lag=1)
