@@ -1,5 +1,63 @@
 library(forecast)
 
+Boot.Arma = function(ARMA.Obj, num_trials=1000) {
+  # Function estimating mean- and variance of parameters
+  # in an ARMA(p, q)-model. Assumes zero mean.
+  
+  phis = ARMA.Obj$model$phi
+  thetas = ARMA.Obj$model$theta
+  sigma2 = ARMA.Obj$sigma2
+  
+  p = length(phis)
+  q = length(thetas)
+  Arima_Ord = c(p, 0, q)
+  
+  # Number of simulation trials:
+  m = num_trials
+  # Steps in each trial:
+  n_step = max(500, 2*length(ARMA.Obj$nobs))
+  
+  # Initializing storage for Bootstrap-estimates:
+  # Stored Column-wise for each parameter.
+  phi_estimates = matrix(0.0, nrow=m, ncol=p)
+  theta_estimates = matrix(0.0, nrow=m, ncol=q)
+  sigma2_vec = c()
+  
+  for(i in 1:m){
+    sim_ts = arima.sim(list(order=Arima_Ord, ar=phis , ma=thetas), 
+                       sd=sqrt(sigma2), n=n_step)
+    arma_mod = Arima(sim_ts, order=Arima_Ord, include.mean=T, lambda=NULL)
+    
+    phi_estimates[i,] = arma_mod$model$phi
+    theta_estimates[i,] = arma_mod$model$theta
+    sigma2_vec = c(sigma2_vec, arma_mod$sigma2)
+  }
+  
+  # Store mean and var in columns. One row per parameter:
+  phi_boot = matrix(0.0, nrow=p, ncol=2)
+  colnames(phi_boot) = c("mean", "var")
+  for(i in 1:p){
+    phi_boot[i, 1] = mean(phi_estimates[, i])
+    phi_boot[i, 2] = var(phi_estimates[, i])
+  }
+  
+  theta_boot = matrix(0.0, nrow=q, ncol=2)
+  colnames(theta_boot) = c("mean", "var")
+  for(i in 1:q){
+    theta_boot[i, 1] = mean(theta_estimates[, i])
+    theta_boot[i, 2] = var(theta_estimates[, i])
+  } 
+  
+  sigma2_boot = c(mean(sigma2_vec), var(sigma2_vec))
+  names(sigma2_boot) = c("mean", "var")
+  ret_value = list()
+  ret_value[["phi"]] = phi_boot
+  ret_value[["theta"]] = theta_boot
+  ret_value[["sigma2"]] = sigma2_boot
+  
+  return (ret_value)
+}
+
 # Load data:
 cv19 = read.csv2("covid19.csv", header=TRUE, sep=";")
 colnames(cv19) <- c("Dato", "Kum.Ant", "Nye.Tilf")
@@ -7,11 +65,18 @@ cv19$Dato = as.Date(cv19$Dato, "%d.%m.%y")
 # View(cv19)
 # BoxCox-transform first:
 best.lambda = BoxCox.lambda(cv19$Nye.Tilf)
-Nye.Tilf.BXCX = BoxCox(cv19$Nye.Tilf, best.lambda)
+# cv19$Nye.Tilf
+Nye.Tilf.BXCX = forecast::BoxCox(cv19$Nye.Tilf, lambda=best.lambda)
 
-simple_mod = auto.arima(cv19$Nye.Tilf, max.order=10,
+simple_mod = auto.arima(cv19$Nye.Tilf, max.order=15,
                         stepwise=FALSE, approximation=FALSE,
-                        lambda=NULL)
+                        lambda=NULL, ic="aicc")
+simple_mod
+Acf(simple_mod$residuals, main="Naiive ARIMA(4,1,4) Residuals")
+simple_mod_coeff_var = Boot.Arma(simple_mod)
+simple_mod_coeff_var
+
+autoplot(simple_mod)
 var(simple_mod$residuals)/simple_mod$sigma2
 par(cex=1.1)
 Acf(simple_mod$residuals, 
