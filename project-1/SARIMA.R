@@ -7,6 +7,7 @@ library(stargazer)
 library(tseries)
 
 library(sarima)
+
 Boot.SARIMA = function(ARMA.Obj, num_trials=1000, lambda="auto") {
   # Function estimating mean- and variance of parameters
   # in an ARMA(p, q)-model. Assumes zero mean.
@@ -89,7 +90,6 @@ Boot.SARIMA = function(ARMA.Obj, num_trials=1000, lambda="auto") {
   return (ret_value)
 }
 
-
 # setwd("C:\\Users\\Gunna\\Documents\\Skole\\?r 4\\Tidsrekker\\Proj 1")
 
 # Make dataframe
@@ -106,6 +106,7 @@ naiive_coef.std.dev = sqrt(apply(naiive_est, MARGIN=2, var))
 naiive_coef.std.dev
 Naiive_ARMA
 
+
 # SARIMA = auto.arima(df$Nye.tilfeller
 #                     , D = 1
 #                     , lambda = "auto" #take best BoxCox
@@ -115,8 +116,6 @@ Naiive_ARMA
 #                     , max.order = 10
 #                     , allowdrift = F
 #                     )
-
-
 
 SARIMA = Arima(df$Nye.tilfeller, order = c(3,1,2), seasonal = c(0,1,2), 
                lambda = "auto")
@@ -128,10 +127,9 @@ coef_est = SARIMA_params$parameter_estimates
 coef_std.dev = sqrt(apply(coef_est, MARGIN=2, var))
 coef_std.dev
 
-
+# Prediction-plot:
 pred = forecast(SARIMA, h = 14) # h = days ahead to predict
 
 autoplot(SARIMA)
 par(mfrow = c(1,1), cex = 1.5)
 plot(pred, include = 50, xlab = "Weeks", ylab = "New cases", )
-
