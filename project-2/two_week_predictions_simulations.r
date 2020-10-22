@@ -81,9 +81,9 @@ plot(pred_8, ylim=ylim, include=50,
 # Containers:
 model3.ts = list(); model8.ts = list()
 model3.pred = list(); model8.pred = list()
-pred_h = 14
+pred_h = 14  # Predict two weeks ahead.
 
-seed0 = 123; nobs = as.integer(round(SARIMA_8$nobs/5))
+seed0 = 1234; nobs = 8*7 # Simulate 8 Weeks of data first.
 num.realizations = 6; 
 for (i in 1:num.realizations) {
   # future=T: Simulated points conditional on the previously observed data.
@@ -93,24 +93,31 @@ for (i in 1:num.realizations) {
                                                 future=T, 
                                                 nsim=nobs, 
                                                 lambda=SARIMA_3_refit$lambda),
-                      frequency=7, start=(8 + 4/7))
+                      frequency=7, start=(0))
   model3.pred[[i]] = forecast(Arima(model3.ts[[i]], model=SARIMA_3), h=pred_h)
   
   model8.ts[[i]] = ts(forecast:::simulate.Arima(SARIMA_8, seed=seed0 - i,
                                                 future=T,  
                                                 nsim=nobs, 
                                                 lambda=SARIMA_8$lambda),
-                      frequency=7, start=(8 + 4/7))
+                      frequency=7, start=(0))
   model8.pred[[i]] = forecast(Arima(model8.ts[[i]], model=SARIMA_8), h=pred_h)
 }
 
 # Autoplot-centered plotting of simulated paths and their two-week predictions:
-predplots = list()
+pred8.plots = list()
+pred3.plots = list()
 for (i in 1:(num.realizations)) {
-  predplots[[i]] = autoplot(model8.pred[[i]],
+  pred8.plots[[i]] = autoplot(model8.pred[[i]],
                        xlab="Weeks", 
                        ylab="New CV19-cases",
                        main=paste("Simulation ", as.character(i), sep="")
                        )
+  pred3.plots[[i]] = autoplot(model3.pred[[i]],
+                        xlab="Weeks", 
+                        ylab="New CV19-cases",
+                        main=paste("Simulation ", as.character(i), sep="")
+  )
 }
-do.call("grid.arrange", c(predplots, ncol=3)) 
+do.call("grid.arrange", c(pred8.plots, ncol=3)) 
+do.call("grid.arrange", c(pred3.plots, ncol=3)) 
