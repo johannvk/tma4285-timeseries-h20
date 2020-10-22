@@ -4,7 +4,7 @@ library(ggplot2)
 library(magrittr)
 library(stargazer)
 
-# Timeseries Packages:
+# Time series Packages:
 library(forecast)
 library(sarima)
 library(tseries)

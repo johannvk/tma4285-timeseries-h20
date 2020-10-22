@@ -131,5 +131,33 @@ coef_std.dev
 pred = forecast(SARIMA, h = 14) # h = days ahead to predict
 
 autoplot(SARIMA)
-par(mfrow = c(1,1), cex = 1.5)
+par(mfrow = c(1,1), cex = 1.05)
 plot(pred, include = 50, xlab = "Weeks", ylab = "New cases", )
+
+
+#######################################################
+        # Add new data to Sarima-model:
+#######################################################
+
+df2 <- read.csv("../project-2/covid_19_new.csv", header = T,sep = ";")
+colnames(df2) = c("Dato", "Kumulativt.antall", "Nye.tilfeller")
+df2$Dato = as.Date(df2$Dato, "%d.%m.%y")
+View(df2)
+
+# Adjust the last two data-points for new cases:
+df2$Nye.tilfeller[length(df2$Nye.tilfeller)-1] = 162
+df2$Nye.tilfeller[length(df2$Nye.tilfeller)] = 107
+
+# Set the period of the data along with its starting point:
+df2$Nye.tilfeller = ts(df2$Nye.tilfeller, frequency = 7, start = (8+4/7))
+
+SARIMA_refit = Arima(df2$Nye.tilfeller, model=SARIMA)
+pred2 = forecast(SARIMA_refit, h = 14) # h = days ahead to predict
+pred3 = forecast(SARIMA_refit, h = 14)
+par(mfrow = c(1,1), cex = 1.05)
+
+# How to predict several times, with different random-number inputs?
+plot(pred2, include = 100, xlab = "Weeks", ylab = "New cases", ylim=c(0, 250))
+plot(pred3, include = 100, xlab = "Weeks", ylab = "New cases", ylim=c(0, 250))
+
+# ggtsdisplay(df2$Nye.tilfeller)
