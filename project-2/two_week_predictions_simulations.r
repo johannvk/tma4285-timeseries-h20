@@ -54,20 +54,38 @@ pred_3 = forecast(SARIMA_3_refit, h=14)
 pred_8 = forecast(SARIMA_8, h=14)
 
 # Plot the two predictions: Kan garantert bli penere plot!
-par(mfrow = c(1,2), cex = 1.01)
+par(mfrow = c(1,2), cex = 1.005)
 ylim = c(0, 1.05*max(pred_8$model$x, 
 #                     pred_3$upper, pred_8$upper,  # Gav veldig stor y-lim. 
-                     pred_8$mean, pred_3$mean))
-
-plot(pred_3, ylim=ylim, include=50, 
-     main="Two-Week Pred. Exerc. 3 Model:
-     SARIMA(3,1,2)(0,1,2)[7]",
+                      pred_8$mean, pred_3$mean))
+plot(pred_3, 
+     ylim=ylim, 
+     include=50, 
+     main="14-Day Pred. Exerc. 3:
+SARIMA(3,1,2)(0,1,2)[7]",
      xlab="Weeks", ylab="Daily New CV19 Cases")
-plot(pred_8, ylim=ylim, include=50, 
-     main="Two-Week Pred. by Exerc. 8 Model:
-     SARIMA(3,1,2)(2,0,0)[7]",
+plot(pred_8, 
+     ylim=ylim, 
+     include=50, 
+     main="14-Day Pred. Exerc. 8:
+SARIMA(3,1,2)(2,0,0)[7]",
      xlab="Weeks", ylab="Daily New CV19 Cases")
 
+pred_3_plot = autoplot(pred_3, 
+                       ylim=c(0, 400), 
+                       include=50, 
+                       main="14-Day Pred. Exerc. 3:
+SARIMA(3,1,2)(0,1,2)[7]",
+                       xlab="Weeks", ylab="Daily New CV19 Cases")
+pred_8_plot = autoplot(pred_8, 
+                       ylim=c(0, 400), 
+                       include=50, 
+                       main="14-Day Pred. Exerc. 8:
+SARIMA(3,1,2)(2,0,0)[7]",
+                       xlab="Weeks", ylab="Daily New CV19 Cases")
+# Not as nice plots with autoplot/ggplot-functionality. 
+# Confidence intervals are cut off and not shown properly.
+# grid.arrange(pred_3_plot, pred_8_plot, ncol=2)
 
 #################################################
 #   Simulate five realizations of each model    #
