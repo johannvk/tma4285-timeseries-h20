@@ -31,7 +31,7 @@ Boot.SARIMA = function(ARMA.Obj, num_trials=1000,
   m = num_trials
   # Steps in each trial:
   period = s
-  n_step = min(8*period, ARMA.Obj$nobs)
+  n_step = max(10*period, ARMA.Obj$nobs)
   
   # Initializing storage for Bootstrap-estimates:
   # Stored Column-wise for each parameter.
@@ -102,7 +102,9 @@ SARIMA_8 = Arima(cv19$Nye.Tilf, order=c(3,1,2),
                  seasonal=list(order=c(2,0,0),period=7), 
                  lambda = 'auto')
 
-set.seed(123)
+autoplot(forecast:::forecast.Arima(SARIMA_8, h=14, bootstrap = T))
+
+set.seed(321)
 SARIMA_8.boot = Boot.SARIMA(SARIMA_8, num_trials=2000, 
                               max.sigma2=5*SARIMA_8$sigma2)
 print("Done Bootstrapping!")

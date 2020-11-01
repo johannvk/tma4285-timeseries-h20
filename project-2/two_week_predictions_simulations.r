@@ -8,6 +8,9 @@ library(forecast)
 library(sarima)
 library(tseries)
 library(TSA)
+library(stats)
+library(ggplot2)
+
 
 # Import data set and correct the last two datums:
 cv19 = read.csv2("covid_19_new.csv", header=TRUE, sep=";")
@@ -21,7 +24,7 @@ cv19$Nye.Tilf[length(cv19$Nye.Tilf)] = 107
 cv19$Nye.Tilf = ts(cv19$Nye.Tilf, frequency=7, start=(8 + 4/7))
 
 # Import old data set:
-cv19_old = read.csv2("../project-1/covid19.csv", header=TRUE, sep=";")
+cv19_old = read.csv2("covid_19_old.csv", header=TRUE, sep=";")
 colnames(cv19_old) <- c("Dato", "Kum.Ant", "Nye.Tilf")
 cv19_old$Dato = as.Date(cv19_old$Dato, format="%d.%m.%y")
 
